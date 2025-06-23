@@ -1,0 +1,371 @@
+zabbix_export:
+  version: '7.2'
+  template_groups:
+    - uuid: 1d8004585af64168b8489537bff04ce8
+      name: 'Template/Virtualização Hyper-v NT'
+  templates:
+    - uuid: 663a868079794f749ca76fa4dfb56a24
+      template: 'Contagem Hyper-V-NT'
+      name: 'Contagem Hyper-V-NT'
+      description: |
+        Template para monitorar o total de VMs, VMs ligadas e desligadas em um host Hyper-V.
+        
+        Feito por Nilo 28-05-2025
+      groups:
+        - name: 'Template/Virtualização Hyper-v NT'
+      items:
+        - uuid: 785a74eac1b44820994535a03cca8594
+          name: 'Informações de memória FISICA (JSON)'
+          key: custom.memory.info
+          delay: 1h
+          value_type: TEXT
+          description: |
+            Este item coleta o JSON inteiro.
+            
+            Este é um item mestre, é um item principal para buscar as informações dos slots  (geralmente um item do tipo texto ou JSON) do qual vários itens dependentes extraem partes específicas da informação.
+            
+            
+            Por que criei um item mestre?
+            
+            Imagine que você tem um script PowerShell que retorna vários dados ao mesmo tempo (como JSON). Em vez de criar vários scripts separados para coletar cada dado, você executa o script uma vez só, coleta tudo, e extrai o que precisa via pré-processamento (com JSONPath, por exemplo).
+          tags:
+            - tag: component
+              value: slot_memory
+        - uuid: c928d3beb6de4013b925dff016a0da2a
+          name: 'Size GB memória módulo 1'
+          type: DEPENDENT
+          key: custom.memory.modules.sizeGB
+          value_type: TEXT
+          description: 'Tamanho da memória'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.modules[0].sizeGB'
+          master_item:
+            key: custom.memory.info
+          tags:
+            - tag: component
+              value: slot_memory
+        - uuid: 23669fa9c8a6411d97a4b7026d9443b9
+          name: 'Velocidade memória módulo 1'
+          type: DEPENDENT
+          key: custom.memory.modules.speed1
+          value_type: TEXT
+          description: 'Velocidade do primeiro módulo (speedMHz) - Velocidade da memória'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.modules[0].speedMHz'
+          master_item:
+            key: custom.memory.info
+          tags:
+            - tag: component
+              value: slot_memory
+        - uuid: c2e85f98ffc34c828bf3680cf402ae6f
+          name: 'Tipo memória módulo 1'
+          type: DEPENDENT
+          key: custom.memory.modules.type1
+          value_type: TEXT
+          description: 'Tipo do primeiro módulo (DDR3, DDR4 etc)'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.modules[0].type'
+          master_item:
+            key: custom.memory.info
+          tags:
+            - tag: component
+              value: slot_memory
+        - uuid: 7992327e0bba4dc187a45475f3cc2864
+          name: 'Total de slots de memória'
+          type: DEPENDENT
+          key: custom.memory.slots
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.totalSlots
+          master_item:
+            key: custom.memory.info
+          tags:
+            - tag: component
+              value: slot_memory
+        - uuid: 00113936dd6642cdbf4949de3fc05040
+          name: 'Total de slots ocupados'
+          type: DEPENDENT
+          key: custom.memory.usedSlots
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.usedSlots
+          master_item:
+            key: custom.memory.info
+          tags:
+            - tag: component
+              value: slot_memory
+        - uuid: 31fb8a486a244f1b80382a5451fee123
+          name: 'Hyper-V: Servidores Desligados_off'
+          key: hyperv.vm.off
+          delay: 1h
+          history: 7d
+          trends: 90d
+          description: 'Número de VMs desligadas no Hyper-V'
+          tags:
+            - tag: contagem
+              value: hyperv
+        - uuid: 9ec00c39f4364e5ca1b6d75fd5e70e47
+          name: 'Hyper-V: Servidores Ligados_on'
+          key: hyperv.vm.running
+          delay: 1h
+          history: 7d
+          trends: 90d
+          description: 'Número de VMs atualmente em execução no Hyper-V'
+          tags:
+            - tag: contagem
+              value: hyperv
+        - uuid: ba645a03b5fe4359b4eef8c0c4e697a8
+          name: 'Hyper-V: Total de Servidores'
+          key: hyperv.vm.total
+          delay: 6h
+          history: 7d
+          trends: 90d
+          description: 'Número total de máquinas virtuais no host Hyper-V'
+          tags:
+            - tag: contagem
+              value: hyperv
+        - uuid: bef49eaeb6c34ab0983016a37fed0b05
+          name: 'Modelo do Processador'
+          type: DEPENDENT
+          key: server.hardware.cpu.name
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Processor
+          master_item:
+            key: server.hardware.info
+          tags:
+            - tag: modelo_fisico
+              value: servidor
+        - uuid: 9c8e699618d141c0bacfa5ceecacec0b
+          name: 'Núcleos Físicos'
+          type: DEPENDENT
+          key: server.hardware.cpu.threads
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.ProcessorThreads
+          master_item:
+            key: server.hardware.info
+          tags:
+            - tag: modelo_fisico
+              value: servidor
+        - uuid: c5b23661d5be46b0a17581ef294c6659
+          name: 'Modelo do Servidor (Windows)'
+          key: server.hardware.info
+          delay: 6h
+          value_type: TEXT
+          description: |
+            Busca Script PowerShell que retorna várias informações do hardware do servidor — modelo, fabricante, serial, e até info do processador — tudo num JSON para facilitar a coleta no Zabbix.
+            
+            Model	Modelo do servidor físico (ex: PowerEdge R540)
+            Manufacturer	Fabricante (ex: Dell Inc., HP, Lenovo)
+            SerialNumber	Número de série físico da máquina (útil para inventário)
+            Processor	Nome completo da CPU
+            ProcessorCores	Número de núcleos físicos do processador
+            ProcessorThreads	Número total de threads (núcleos físicos x hyper-threading)
+            TotalPhysicalMemoryGB	Memória RAM física total instalada (em GB)
+          tags:
+            - tag: modelo_fisico
+              value: servidor
+        - uuid: b06426b67032443c87c58d68ba426611
+          name: 'Fabricante do Servidor'
+          type: DEPENDENT
+          key: server.hardware.manufacturer
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Manufacturer
+          master_item:
+            key: server.hardware.info
+          tags:
+            - tag: modelo_fisico
+              value: servidor
+        - uuid: cb67e6b0f23e42039057c79207f9fc01
+          name: 'Modelo do Servidor'
+          type: DEPENDENT
+          key: server.hardware.model
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Model
+          master_item:
+            key: server.hardware.info
+          tags:
+            - tag: modelo_fisico
+              value: servidor
+        - uuid: 641931e47df34b9890ea35e608644a4e
+          name: 'Memória RAM Física (GB)'
+          type: DEPENDENT
+          key: server.hardware.ram.gb
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.TotalPhysicalMemoryGB
+          master_item:
+            key: server.hardware.info
+          tags:
+            - tag: modelo_fisico
+              value: servidor
+        - uuid: 0317e5d04f894411bbfcbf22ae03ad6a
+          name: 'Número de Série'
+          type: DEPENDENT
+          key: server.hardware.serial
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.SerialNumber
+          master_item:
+            key: server.hardware.info
+          tags:
+            - tag: modelo_fisico
+              value: servidor
+      discovery_rules:
+        - uuid: bfc11d4cc5a74a209461eef34f02147b
+          name: 'Descoberta de VMs Hyper-V'
+          key: hyperv.vms.discovery
+          delay: 5m
+          description: |
+            Essa regra de descoberta utiliza um script PowerShell executado via UserParameter no Zabbix Agent instalado no host físico Hyper-V para identificar automaticamente todas as máquinas virtuais (VMs) configuradas.
+            
+            Ela retorna os nomes das VMs no formato JSON necessário para Low-Level Discovery (LLD), permitindo que o Zabbix crie dinamicamente itens, gráficos e triggers para cada VM sem necessidade de configuração manual.
+            
+            Requisitos:
+            
+            UserParameter=hyperv.vms.discovery deve estar definido no zabbix_agentd.conf do host Hyper-V.
+            
+            PowerShell instalado e funcionando no host.
+            
+            Serviço Zabbix Agent reiniciado após configuração.
+            
+            Resultado esperado:
+            
+            Lista com os nomes de todas as VMs presentes no Hyper-V.
+            
+            Disponibilização da macro {#VMNAME} para uso nos protótipos de item.
+          item_prototypes:
+            - uuid: 5276ad13fdbf4063a82e1af5b9c776f9
+              name: 'Disco total - {#VMNAME}'
+              key: 'hyperv.vm.disk_total[{#VMNAME}]'
+              delay: 5m
+              units: B
+              tags:
+                - tag: Dados_VM-Hyperv
+                  value: disco
+            - uuid: edf4d0f88a104892a0c9ff2f832a1341
+              name: 'Disco utilizado - {#VMNAME}'
+              key: 'hyperv.vm.disk_used[{#VMNAME}]'
+              delay: 5m
+              units: B
+              tags:
+                - tag: Dados_VM-Hyperv
+                  value: disco
+            - uuid: 02109f8688d84c999442256b76bdd1d4
+              name: 'Memória atribuída (GB) - {#VMNAME}'
+              key: 'hyperv.vm.memory_assigned[{#VMNAME}]'
+              value_type: FLOAT
+              units: GB
+              tags:
+                - tag: Dados_VM-Hyperv
+                  value: memoria
+            - uuid: 16e046c40f8c4e249efa121abd9e99c4
+              name: 'Memória utilizada (GB) - {#VMNAME}'
+              key: 'hyperv.vm.memory_used[{#VMNAME}]'
+              value_type: FLOAT
+              units: GB
+              description: 'Memória utilizada (MB) - {#VMNAME}'
+              tags:
+                - tag: Dados_VM-Hyperv
+                  value: memoria
+            - uuid: e570bb27ad524686ad5d293f5523abb9
+              name: 'Status da VM - {#VMNAME}'
+              key: 'hyperv.vm.status[{#VMNAME}]'
+              description: |
+                Você deverá ver um número:
+                
+                1 se a VM estiver Running
+                0 se a VM estiver Off
+                2 se estiver Paused
+                99 para qualquer outro status
+              tags:
+                - tag: Dados_VM-Hyperv
+                  value: Status
+            - uuid: 72f2d0547deb4bd4a71e49d6aa5607e1
+              name: 'Uptime da VM {#VMNAME}'
+              key: 'hyperv.vm.uptime[{#VMNAME}]'
+              value_type: TEXT
+              description: |
+                Em pré-processamento, em javascript para mostrar em mês, dia, horas e minutos, insira este código abaixo:
+                
+                var totalSeconds = parseInt(value);
+                var months = Math.floor(totalSeconds / (30 * 86400));
+                var days = Math.floor((totalSeconds % (30 * 86400)) / 86400);
+                var hours = Math.floor((totalSeconds % 86400) / 3600);
+                var minutes = Math.floor((totalSeconds % 3600) / 60);
+                
+                var result = "";
+                
+                if (months > 0) {
+                    result += months + (months == 1 ? " mês " : " meses ");
+                }
+                if (days > 0) {
+                    result += days + (days == 1 ? " dia " : " dias ");
+                }
+                if (hours > 0) {
+                    result += hours + (hours == 1 ? " hora " : " horas ");
+                }
+                if (minutes > 0) {
+                    result += minutes + (minutes == 1 ? " minuto" : " minutos");
+                }
+                
+                // Se tudo for zero, retorna "0 minutos"
+                return result.trim() || "0 minutos";
+                
+                
+                somente dia, horas e minutos:
+                
+                var totalSeconds = value;
+                var days = Math.floor(totalSeconds / 86400);
+                var hours = Math.floor((totalSeconds % 86400) / 3600);
+                return days + " dias " + hours + " horas";
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var totalSeconds = value;
+                      var days = Math.floor(totalSeconds / 86400);
+                      var hours = Math.floor((totalSeconds % 86400) / 3600);
+                      return days + " dias " + hours + " horas";
+                      
+              tags:
+                - tag: Dados_VM-Hyperv
+                  value: uptime
+              trigger_prototypes:
+                - uuid: c2dd6b5a8dbb451aa00762d9b3867832
+                  expression: 'last(/Contagem Hyper-V-NT/hyperv.vm.uptime[{#VMNAME}])>172800'
+                  name: '⚠️ Uptime da VM {#VMNAME} superior a 20 dias'
+                  priority: HIGH
+                  description: 'Quando o uptime ultrapassar 1728000 segundos (20 dias), a trigger será ativada automaticamente.'
+      tags:
+        - tag: virtualization
+          value: hyperv
+      macros:
+        - macro: '{$HYPERV_VM_REFRESH}'
+          value: '60'
+          description: 'Intervalo de coleta em segundos (usado nos itens com macros)'
